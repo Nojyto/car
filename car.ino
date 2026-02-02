@@ -1,7 +1,7 @@
 #include <Servo.h>
 
 #define servoPin 9
-#define dacPin DAC0  
+#define dacPin DAC0
 
 Servo myservo;
 int currentPos = 90;
@@ -13,37 +13,47 @@ const int motorMaxDAC = 1023;
 
 void setup() {
   myservo.attach(servoPin);
-  analogWriteResolution(10); 
-  
+  analogWriteResolution(10);
+
   myservo.write(currentPos);
-  analogWrite(dacPin, 0); 
+  analogWrite(dacPin, 0);
 
   Serial.begin(9600);
-  Serial.println("Init.");
+  Serial1.begin(9600);
+
+  Serial.println("System Online. Send 'angle;speed' via USB or BLE.");
   lastInputTime = millis();
 }
 
 void loop() {
   if (Serial.available() > 0) {
-    String input = Serial.readStringUntil('\n');
-    int separatorIndex = input.indexOf(';');
+    processInput(Serial.readStringUntil('\n'));
+  }
 
-    if (separatorIndex != -1) {
-      int targetAngle = input.substring(0, separatorIndex).toInt();
-      int speedInput = input.substring(separatorIndex + 1).toInt();
-
-      targetAngle = constrain(targetAngle, 0, 180);
-      speedInput = constrain(speedInput, 0, 100);
-
-      executeMovement(targetAngle, speedInput);
-      lastInputTime = millis();
-    }
+  if (Serial1.available() > 0) {
+    processInput(Serial1.readStringUntil('\n'));
   }
 
   if (millis() - lastInputTime > timeoutLimit) {
-    Serial.println("Timeout: Resetting to Idle...");
-    executeMovement(90, 0);
-    lastInputTime = millis(); 
+    if (currentPos != 90) {
+      Serial.println("Timeout: Resetting...");
+      executeMovement(90, 0);
+    }
+    lastInputTime = millis();
+  }
+}
+
+void processInput(String input) {
+  int separatorIndex = input.indexOf(';');
+  if (separatorIndex != -1) {
+    int targetAngle = input.substring(0, separatorIndex).toInt();
+    int speedInput = input.substring(separatorIndex + 1).toInt();
+
+    targetAngle = constrain(targetAngle, 0, 180);
+    speedInput = constrain(speedInput, 0, 100);
+
+    executeMovement(targetAngle, speedInput);
+    lastInputTime = millis();
   }
 }
 
@@ -52,7 +62,6 @@ void executeMovement(int angle, int speedPercent) {
   myservo.write(angle);
 
   int dacValue = 0;
-  
   if (speedPercent > 0) {
     dacValue = map(speedPercent, 1, 100, motorMinDAC, motorMaxDAC);
   } else {
@@ -60,8 +69,8 @@ void executeMovement(int angle, int speedPercent) {
   }
 
   analogWrite(dacPin, dacValue);
-  
-  Serial.print("Angle: "); Serial.print(angle);
-  Serial.print(" | Input Speed: "); Serial.print(speedPercent);
-  Serial.print(" | Actual DAC: "); Serial.println(dacValue);
+
+  String feedback = "A:" + String(angle) + " S:" + String(speedPercent);
+  Serial.println(feedback);
+  Serial1.println(feedback);
 }
