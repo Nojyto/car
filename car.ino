@@ -7,22 +7,26 @@
 #define relay2 6
 #define relay3 5
 
+#define timeoutLimit 1500
+#define shiftDelay 1000
+#define brakeDelay 300
+
+#define motorMinDAC 410
+#define motorMaxDAC 1023
+
+#define servoOffset 25
+#define servoMin 0
+#define servoMax 180
+
 Servo myservo;
 int currentPos = 90;
 int currentSpeed = 0;
 int currentDir = 0;
-bool isBraking = false;
+bool isBraking = true;
 
 unsigned long lastInputTime = 0;
 unsigned long shiftTimer = 0;
 unsigned long brakeTimer = 0;
-
-const unsigned long timeoutLimit = 1500;
-const unsigned long shiftDelay = 1000;
-const unsigned long brakeDelay = 300;
-
-const int motorMinDAC = 410;
-const int motorMaxDAC = 1023;
 
 String bleBuffer = "";
 String usbBuffer = "";
@@ -88,7 +92,6 @@ void processInput(String input) {
 }
 
 void executeMovement(int angle, int speedPercent, int direction) {
-
   // 1. Direction Shift Safety
   if (direction != 0 && direction != currentDir) {
     analogWrite(dacPin, 0);
@@ -116,7 +119,8 @@ void executeMovement(int angle, int speedPercent, int direction) {
 
   // 4. Set Hardware Outputs
   if (angle != currentPos) {
-    myservo.write(angle);
+    int calibratedAngle = map(angle, servoMin, servoMax, servoMin + servoOffset, servoMax - servoOffset);
+    myservo.write(calibratedAngle);
     currentPos = angle;
   }
   int dacValue = (!isBraking && speedPercent > 0) ? map(speedPercent, 1, 100, motorMinDAC, motorMaxDAC) : 0;
