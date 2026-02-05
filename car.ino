@@ -14,7 +14,7 @@
 #define motorMinDAC 410
 #define motorMaxDAC 1023
 
-#define servoOffset 25
+#define servoOffset 55
 #define servoMin 0
 #define servoMax 180
 
